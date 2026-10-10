@@ -1,0 +1,113 @@
+<!doctype html>
+<html lang="el">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="theme-color" content="#142d4e">
+  <link rel="manifest" href="/static/manifest.json">
+  <title>Factory Fault Tracker</title>
+  <style>
+    :root{font-family:system-ui,-apple-system,Segoe UI,sans-serif;color:#172033;background:#f3f6fa}
+    *{box-sizing:border-box}body{margin:0}header{background:#142d4e;color:white;padding:20px 16px}
+    header h1{margin:0;font-size:1.35rem}header p{margin:6px 0 0;color:#d7e4f5;font-size:.92rem}
+    main{max-width:920px;margin:auto;padding:16px;display:grid;gap:16px}
+    section{background:white;border:1px solid #dce3ec;border-radius:14px;padding:16px;box-shadow:0 2px 8px #0c234008}
+    h2{font-size:1.1rem;margin:0 0 14px}.grid{display:grid;grid-template-columns:1fr 1fr;gap:12px}
+    label{display:block;font-weight:600;font-size:.9rem;margin-bottom:5px}
+    input,select,textarea{width:100%;font:inherit;border:1px solid #b9c5d4;border-radius:9px;padding:11px;background:#fff}
+    textarea{min-height:90px;resize:vertical}.full{grid-column:1/-1}
+    button{border:0;border-radius:9px;background:#1459a6;color:white;padding:12px 16px;font:inherit;font-weight:700;cursor:pointer}
+    button.secondary{background:#e7eef7;color:#173c68}button:disabled{opacity:.5}
+    .muted{color:#66758a;font-size:.88rem}.notice{padding:10px;border-radius:8px;background:#edf7ef;color:#14532d;display:none}
+    .fault{border:1px solid #dce3ec;border-radius:10px;padding:12px;margin-top:10px}
+    .faulthead{display:flex;gap:8px;justify-content:space-between;flex-wrap:wrap}.pill{font-size:.78rem;font-weight:700;padding:4px 8px;border-radius:99px;background:#e7eef7}
+    .Critical,.High{background:#fee2e2;color:#991b1b}.Medium{background:#fef3c7;color:#92400e}.Low{background:#dcfce7;color:#166534}
+    .actions{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-top:10px}
+    .actions input,.actions select{min-width:0}.photo{max-width:100%;max-height:220px;display:block;margin-top:8px;border-radius:8px}
+    @media(max-width:600px){.grid{grid-template-columns:1fr}.full{grid-column:auto}.actions{grid-template-columns:1fr}}
+  </style>
+</head>
+<body>
+<header><h1>Factory Fault Tracker</h1><p>Αναφορά, ανάθεση και παρακολούθηση βλαβών</p></header>
+<main>
+  <section>
+    <h2>Νέα αναφορά βλάβης</h2>
+    <div id="notice" class="notice"></div>
+    <form id="reportForm" class="grid">
+      <div><label for="reporter">Ονοματεπώνυμο αναφέροντος *</label><input id="reporter" name="reporter" required autocomplete="name"></div>
+      <div><label for="department">Τμήμα *</label><select id="department" name="department" required><option value="">Επίλεξε...</option><option>Παραγωγή</option><option>Συντήρηση</option><option>Αποθήκη</option><option>Ποιότητα</option><option>Υποδομές</option><option>Άλλο</option></select></div>
+      <div><label for="asset_code">Barcode / Asset ID *</label><div style="display:flex;gap:6px"><input id="asset_code" name="asset_code" required placeholder="π.χ. MTR-0021"><button type="button" class="secondary" id="scanBtn" title="Σάρωση barcode">Σάρωση</button></div><div id="scanner" class="muted"></div></div>
+      <div><label for="fault_type">Είδος βλάβης *</label><select id="fault_type" name="fault_type" required><option value="">Επίλεξε...</option><option>Ηλεκτρολογική</option><option>Μηχανολογική</option><option>Διαρροή</option><option>Αισθητήρας / Αυτοματισμός</option><option>Προστατευτικό / Ασφάλεια</option><option>Άλλο</option></select></div>
+      <div><label for="severity">Severity *</label><select id="severity" name="severity" required><option>Low</option><option>Medium</option><option>High</option><option>Critical</option></select></div>
+      <div><label for="photo">Φωτογραφία</label><input id="photo" name="photo" type="file" accept="image/*" capture="environment"></div>
+      <div class="full"><label for="description">Περιγραφή βλάβης *</label><textarea id="description" name="description" required placeholder="Τι εντόπισες και πού ακριβώς;"></textarea></div>
+      <div class="full"><button type="submit" id="submitBtn">Υποβολή βλάβης</button></div>
+    </form>
+    <p class="muted">Για πραγματική χρήση σε εργοστάσιο, η εφαρμογή πρέπει να διατεθεί μέσω HTTPS και να προστεθούν εταιρική σύνδεση χρηστών και δικαιώματα πρόσβασης.</p>
+  </section>
+  <section>
+    <h2>Ανοικτές και πρόσφατες βλάβες</h2>
+    <p class="muted">Η ανάθεση και η αλλαγή κατάστασης παρακάτω γίνονται στο dashboard. Η διασύνδεση Teams στο starter στέλνει ειδοποίηση· οι ενέργειες απευθείας μέσα στο Teams απαιτούν επιπλέον Teams app/bot ή κατάλληλη ενσωμάτωση Graph.</p>
+    <button type="button" class="secondary" id="refreshBtn">Ανανέωση λίστας</button>
+    <div id="faultList"></div>
+  </section>
+</main>
+<script src="https://unpkg.com/@zxing/library@0.21.3/umd/index.min.js"></script>
+<script>
+const $ = id => document.getElementById(id);
+const form = $("reportForm");
+function esc(s){return String(s??"").replace(/[&<>"']/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));}
+$("scanBtn").addEventListener("click", async()=>{
+  const box=$("scanner");
+  if(!navigator.mediaDevices?.getUserMedia){box.textContent="Η σάρωση κάμερας χρειάζεται HTTPS και συμβατό browser. Μπορείς να πληκτρολογήσεις το Asset ID.";return;}
+  if(!window.ZXing){box.textContent="Δεν φορτώθηκε η βιβλιοθήκη σάρωσης. Πληκτρολόγησε το Asset ID.";return;}
+  box.innerHTML='<video id="scanVideo" style="width:100%;max-width:360px;border-radius:8px"></video><button type="button" class="secondary" id="stopScan">Κλείσιμο κάμερας</button>';
+  const video=$("scanVideo"), reader=new ZXing.BrowserMultiFormatReader();
+  try{
+    window.currentReader=reader;
+    await reader.decodeFromVideoDevice(undefined,video,(result,err)=>{
+      if(result){$("asset_code").value=result.getText();reader.reset();box.textContent="Barcode: "+result.getText();}
+    });
+    $("stopScan").onclick=()=>{reader.reset();box.textContent="Η σάρωση ακυρώθηκε.";};
+  }catch(e){box.textContent="Δεν ήταν δυνατή η πρόσβαση στην κάμερα. Έλεγξε τα permissions και το HTTPS.";}
+});
+form.addEventListener("submit",async e=>{
+  e.preventDefault();$("submitBtn").disabled=true;
+  try{
+    const res=await fetch("/api/faults",{method:"POST",body:new FormData(form)});
+    const data=await res.json();if(!res.ok)throw new Error(data.detail||"Αποτυχία υποβολής");
+    $("notice").style.display="block";$("notice").textContent="Η βλάβη καταχωρήθηκε: "+data.fault.id;
+    form.reset();await loadFaults();
+  }catch(err){alert(err.message||"Σφάλμα δικτύου");}
+  finally{$("submitBtn").disabled=false;}
+});
+async function updateFault(id){
+  const assignee=document.getElementById("assignee-"+id).value;
+  const status=document.getElementById("status-"+id).value;
+  const resolution=document.getElementById("resolution-"+id).value;
+  const res=await fetch("/api/faults/"+encodeURIComponent(id),{method:"PATCH",headers:{"Content-Type":"application/json"},body:JSON.stringify({assignee,status,resolution})});
+  if(!res.ok){alert("Δεν αποθηκεύτηκε η αλλαγή.");return;} await loadFaults();
+}
+async function loadFaults(){
+  const host=$("faultList");host.innerHTML='<p class="muted">Φόρτωση...</p>';
+  try{
+    const res=await fetch("/api/faults");const rows=await res.json();
+    if(!rows.length){host.innerHTML='<p class="muted">Δεν υπάρχουν ακόμη αναφορές.</p>';return;}
+    host.innerHTML=rows.map(f=>`<article class="fault">
+      <div class="faulthead"><strong>${esc(f.id)} · ${esc(f.fault_type)}</strong><span class="pill ${esc(f.severity)}">${esc(f.severity)}</span></div>
+      <p>${esc(f.description)}</p><p class="muted">Asset: ${esc(f.asset_code)} · Τμήμα: ${esc(f.department)} · Αναφέρων: ${esc(f.reporter)}</p>
+      ${f.photo_path?`<a href="${esc(f.photo_path)}" target="_blank" rel="noopener">Προβολή φωτογραφίας</a>`:""}
+      <div class="actions">
+        <div><label>Υπεύθυνος</label><input id="assignee-${esc(f.id)}" value="${esc(f.assignee)}" placeholder="Όνομα τεχνικού"></div>
+        <div><label>Κατάσταση</label><select id="status-${esc(f.id)}">${["New","Assigned","In Progress","Resolved"].map(s=>`<option ${f.status===s?"selected":""}>${s}</option>`).join("")}</select></div>
+        <div class="full"><label>Ενέργεια αποκατάστασης</label><input id="resolution-${esc(f.id)}" value="${esc(f.resolution)}" placeholder="Τι έγινε για την επίλυση;"></div>
+        <div class="full"><button type="button" onclick="updateFault('${esc(f.id)}')">Αποθήκευση αλλαγών</button></div>
+      </div>
+    </article>`).join("");
+  }catch(e){host.innerHTML='<p>Σφάλμα σύνδεσης με τον server.</p>';}
+}
+$("refreshBtn").onclick=loadFaults;loadFaults();
+if("serviceWorker" in navigator){navigator.serviceWorker.register("/static/sw.js").catch(()=>{});}
+</script>
+</body>
+</html>

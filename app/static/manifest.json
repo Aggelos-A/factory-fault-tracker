@@ -1,0 +1,9 @@
+{
+  "name": "Factory Fault Tracker",
+  "short_name": "Fault Tracker",
+  "start_url": "/",
+  "display": "standalone",
+  "background_color": "#f3f6fa",
+  "theme_color": "#142d4e",
+  "icons": []
+}

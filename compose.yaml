@@ -1,0 +1,15 @@
+services:
+  fault-tracker:
+    build: .
+    container_name: factory-fault-tracker
+    ports:
+      - "8000:8000"
+    environment:
+      DATA_DIR: /data
+      # Add the Teams Workflows webhook URL here, or use a .env file.
+      TEAMS_WEBHOOK_URL: ${TEAMS_WEBHOOK_URL:-}
+    volumes:
+      - fault_data:/data
+    restart: unless-stopped
+volumes:
+  fault_data:

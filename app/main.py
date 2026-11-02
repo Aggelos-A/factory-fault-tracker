@@ -1,4 +1,4 @@
-import os, sqlite3, uuid, shutill
+import os, sqlite3, uuid, shutil
 from datetime import datetime, timezone
 from pathlib import Path
 from typing import Optional

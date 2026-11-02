@@ -18,6 +18,7 @@ DB = DATA / "faults.db"
 TEAMS_WEBHOOK_URL = os.getenv("TEAMS_WEBHOOK_URL", "").strip()
 
 app = FastAPI(title="Factory Fault Tracker")
+Instrumentator().instrument(app).expose(app)
 app.mount("/uploads", StaticFiles(directory=str(UPLOADS)), name="uploads")
 app.mount("/static", StaticFiles(directory=str(ROOT / "static")), name="static")
 

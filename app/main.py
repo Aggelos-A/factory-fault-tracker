@@ -4,6 +4,7 @@ from pathlib import Path
 from typing import Optional
 import httpx
 from fastapi import FastAPI, UploadFile, File, Form, HTTPException
+from prometheus_fastapi_instrumentator import Instrumentator
 from fastapi.responses import HTMLResponse
 from fastapi.staticfiles import StaticFiles
 from pydantic import BaseModel
